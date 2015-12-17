@@ -1,0 +1,18 @@
+#
+# Parsed by go get gopkg.in/yaml.v2 
+seeds:
+  name: node
+  config:
+    - repositories:
+      - source:
+        url: images.container.org
+        public: true
+    - images:
+      - source:
+        alias: willy
+      - target:
+        name: wiily-node
+  install:
+    #exec: native lxc exec
+    exec: /usr/bin/
+    #others : to be defined
