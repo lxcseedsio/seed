@@ -1,18 +1,14 @@
 #
-# Parsed by go get gopkg.in/yaml.v2 
-seeds:
-  name: node
-  config:
-    - repositories:
-      - source:
-        url: images.container.org
-        public: true
-    - images:
-      - source:
-        alias: willy
-      - target:
-        name: wiily-node
-  install:
-    #exec: native lxc exec
-    exec: /usr/bin/
-    #others : to be defined
+# Parsed by go get gopkg.in/yaml.v2
+#
+
+#
+description: fruits are delicious
+source:
+  remote: "https://images.linuxcontainers.org:8443"
+  alias: "ubuntu/wily/amd64"
+destination:
+  remote: "local"
+  alias: "ubuntu/wily/amd64"
+#lxc exec
+exec: /usr/bin/bash

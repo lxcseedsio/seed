@@ -16,40 +16,25 @@ b:
   d: [3, 4]
 `*/
 
-type T struct {
-        A string
-        B struct {
-                RenamedC int   `yaml:"c"`
-                D        []int `yaml:",flow"`
-        }
+
+type Repository struct   {
+  Remote string
+  Alias string
+}
+
+type Config struct   {
+  Description string
+  Source Repository
+  Destination Repository
+  Exec string
+  Alias string
 }
 
 func main() {
-        t := T{}
-
-        err := yaml.Unmarshal([]byte(data), &t)
+var config Config
+        err = yaml.Unmarshal([]byte(data), &config)
         if err != nil {
                 log.Fatalf("error: %v", err)
         }
-        fmt.Printf("--- t:\n%v\n\n", t)
-
-        d, err := yaml.Marshal(&t)
-        if err != nil {
-                log.Fatalf("error: %v", err)
-        }
-        fmt.Printf("--- t dump:\n%s\n\n", string(d))
-
-        m := make(map[interface{}]interface{})
-
-        err = yaml.Unmarshal([]byte(data), &m)
-        if err != nil {
-                log.Fatalf("error: %v", err)
-        }
-        fmt.Printf("--- m:\n%v\n\n", m)
-
-        d, err = yaml.Marshal(&m)
-        if err != nil {
-                log.Fatalf("error: %v", err)
-        }
-        fmt.Printf("--- m dump:\n%s\n\n", string(d))
+        fmt.Printf("--- m:\n%#v\n\n", config)
 }
