@@ -20,6 +20,6 @@ commands:
     exec: ls /tmp/nonexistant
     continue: true
   - name: fail then exit
-    exec: cat /tmp/nonexistant
+    exec: ls /tmp/nonexistant
   - name: should not exec cause of previous err
     exec: cat /tmp/test

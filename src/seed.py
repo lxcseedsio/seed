@@ -57,7 +57,7 @@ for command in cfg['commands']:
     print ("-- Command: " + command['name'])
     operation = lxd.container_run_command(CONTAINER_NAME,
         ['/bin/sh', '-c', command['exec']],
-        False,    # interactive
+        False,    #no interactive
         True,    # wait websocket
         {"HOME":command.get("home" ,"/root"),"TERM":"xterm-256color","USER":command.get("user", "root")}
     )
@@ -68,6 +68,7 @@ for command in cfg['commands']:
     wsock2 = lxd.operation_stream(operation[1]['operation'], secrets['2'])
 
     runResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
+    operationResult = lxd.operation_info(operation[1]['operation'])
 
     stdout = wsock1.messages.get()
     #FIXME : this is no good way to itearate over queues
@@ -78,11 +79,12 @@ for command in cfg['commands']:
 
     #FIXME : same ugly test here
     if (isinstance(stderr, ws4py.messaging.BinaryMessage)):
-        print(stderr, file=sys.stderr) #FIXME: there shuld be a better way to check if command failed (operation_info ?)
-        if (command.get("continue" ,False) != True):
-            buildStatus=-1
-            print ("- Exiting because of previous ERROR")
-            break
+        print(stderr, file=sys.stderr)
+
+    if ((operationResult[1]['metadata']['metadata']['return'] != 0) and (command.get("continue" ,False) != True)):
+        buildStatus=-1
+        print ("- Exiting because of previous ERROR")
+        break
 
 #Stop in any case
 print ("- Stopping container " + CONTAINER_NAME)
