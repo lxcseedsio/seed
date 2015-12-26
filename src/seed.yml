@@ -16,7 +16,10 @@ commands:
     exec: echo test > /tmp/test
   - name: cat test
     exec: cat /tmp/test
-  - name: break test
+  - name: error non blocking
     exec: ls /tmp/nonexistant
+    continue: true
+  - name: fail then exit
+    exec: cat /tmp/nonexistant
   - name: should not exec cause of previous err
     exec: cat /tmp/test

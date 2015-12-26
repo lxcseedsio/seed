@@ -34,24 +34,27 @@ config = {'name': CONTAINER_NAME,
                     }
         }
 
+#Default build status is OK
+buildStatus=0
+
 print ("Creating container with name " + CONTAINER_NAME)
 operation = lxd.container_init(config)
 creationResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
 #TODO exit if non 200
 
 #Start
-print ("Starting container " + CONTAINER_NAME)
+print ("- Starting container " + CONTAINER_NAME)
 operation = lxd.container_start(CONTAINER_NAME, 60)
 startResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
 #TODO exit if non 200
 
 #Sleep some seconds to ensure container start is really done
-print ("Waiting a little for container init process")
+print ("- Waiting a little for container init process")
 time.sleep(CONTAINER_TIME_WAIT_AFTER_START) #TODO : should be configurable but with a max test
 
 #Do exec
 for command in cfg['commands']:
-    print ("Command: " + command['name'])
+    print ("-- Command: " + command['name'])
     operation = lxd.container_run_command(CONTAINER_NAME,
         ['/bin/sh', '-c', command['exec']],
         False,    # interactive
@@ -75,12 +78,21 @@ for command in cfg['commands']:
 
     #FIXME : same ugly test here
     if (isinstance(stderr, ws4py.messaging.BinaryMessage)):
-        print(stderr, file=sys.stderr)
-        print ("Exiting because of previous ERROR") #TODO MUST remember status to properly exit code and not publish
-        break
+        print(stderr, file=sys.stderr) #FIXME: there shuld be a better way to check if command failed (operation_info ?)
+        if (command.get("continue" ,False) != True):
+            buildStatus=-1
+            print ("- Exiting because of previous ERROR")
+            break
 
-#TODO stop & publish (only if all command success)
+#Stop in any case
+print ("- Stopping container " + CONTAINER_NAME)
+operation = lxd.container_stop(CONTAINER_NAME, 60)
+stopResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
 
-#TODO remove in all cases
+#Publish (only if build successfull)
+if (buildStatus == 0):
+    print ("- Publishing with alias ") #TODO manage alias and props
 
+#Delete in all cases
+print ("- Delete container " + CONTAINER_NAME)
 print ("DONE")
