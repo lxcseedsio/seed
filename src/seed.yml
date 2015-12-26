@@ -6,7 +6,11 @@ source:
 destination:
   remote: "local"
   alias: "ubuntu/wily/amd64"
-#lxc exec
+properties:
+  #micro, fat, infra, devstack or other
+  type: micro
+  tag: tag
+#list of named commands with exec, user, home and continue attributes
 commands:
   - name: exec rm
     exec: rm -f /tmp/test

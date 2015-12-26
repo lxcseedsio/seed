@@ -15,10 +15,45 @@ CONTAINER_TIME_WAIT_AFTER_START=0
 with open("seed.yml", 'r') as ymlfile:
     cfg = yaml.load(ymlfile)
 
+#TODO: move this func to a different file
+def checkConfig():
+    print ("- Checking config file")
+
+    if (cfg.get('source', None) == None):
+        print ("-- Source is mandatory with attributes remote and alias")
+        sys.exit(1)
+    if (cfg['source'].get('remote', None) == None):
+        print ("-- Remote source lxd is mandatory")
+        sys.exit(1)
+    if (cfg['source'].get('alias', None) == None):
+        print ("-- Alias source is mandatory")
+        sys.exit(1)
+
+    if (cfg.get('destination', None) == None):
+        print ("-- Destination is mandatory with attributes remote and alias")
+        sys.exit(1)
+    if (cfg['destination'].get('alias', None) == None):
+        print ("-- Destination alias is mandatory")
+        sys.exit(1)
+
+    if (cfg.get('properties', None) == None):
+        print ("-- Properties is mandatory with at least attributes tag and type")
+        sys.exit(1)
+    if (cfg['properties'].get('tag', None) == None):
+        print ("-- Tag property is mandatory")
+        sys.exit(1)
+    #FIXME: this test is not failing if value is different from expected
+    if (cfg['properties'].get('type', None) == None):
+        print ("-- Type property is mandatory and must be one of : micro, fat, infra, devstack or other")
+        sys.exit(1)
+
+checkConfig()
+
 #print cfg
 
 lxd = api.API()
 
+#FIXME using uuid container test should not be necessary
 try:
     lxd.container_defined(CONTAINER_NAME)
 except Exception as e:
@@ -37,12 +72,12 @@ config = {'name': CONTAINER_NAME,
 #Default build status is OK
 buildStatus=0
 
-print ("Creating container with name " + CONTAINER_NAME)
-operation = lxd.container_init(config)
-creationResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
+print ("- Creating container with name " + CONTAINER_NAME)
+#operation = lxd.container_init(config)
+#creationResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
 #TODO exit if non 200
 
-#Start
+#   Start
 print ("- Starting container " + CONTAINER_NAME)
 operation = lxd.container_start(CONTAINER_NAME, 60)
 startResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
@@ -89,12 +124,19 @@ for command in cfg['commands']:
 #Stop in any case
 print ("- Stopping container " + CONTAINER_NAME)
 operation = lxd.container_stop(CONTAINER_NAME, 60)
+#TODO: test if publish possible with suspend instead of stopping
 stopResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
 
 #Publish (only if build successfull)
 if (buildStatus == 0):
-    print ("- Publishing with alias ") #TODO manage alias and props
+    #FIXME : does not work -> patch needed for py lxd
+    publish=lxd.container_publish(CONTAINER_NAME)
+    #Fallback to sys call
+    #lxc publish --public --alias=
 
 #Delete in all cases
 print ("- Delete container " + CONTAINER_NAME)
+operation = lxd.container_destroy(CONTAINER_NAME)
+destroyResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
+
 print ("DONE")
