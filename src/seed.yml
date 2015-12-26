@@ -7,4 +7,16 @@ destination:
   remote: "local"
   alias: "ubuntu/wily/amd64"
 #lxc exec
-exec: echo test > /tmp/test
+commands:
+  - name: exec rm
+    exec: rm -f /tmp/test
+    user: root
+    home: /root
+  - name: exec echo
+    exec: echo test > /tmp/test
+  - name: cat test
+    exec: cat /tmp/test
+  - name: break test
+    exec: ls /tmp/nonexistant
+  - name: should not exec cause of previous err
+    exec: cat /tmp/test

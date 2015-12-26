@@ -1,18 +1,21 @@
 #coding: utf-8
-
+from __future__ import print_function
 import yaml
 import uuid
 from pylxd import api
 import time
 import ws4py.messaging
+import sys
+
 
 CONTAINER_NAME = "temp"
 #CONTAINER_NAME += str(uuid.uuid1())
 CONTAINER_TIME_WAIT_AFTER_START=0
 
-
 with open("seed.yml", 'r') as ymlfile:
     cfg = yaml.load(ymlfile)
+
+#print cfg
 
 lxd = api.API()
 
@@ -22,7 +25,7 @@ except Exception as e:
     print("Container does exist: %s" % e)
 
 config = {'name': CONTAINER_NAME,
-          'profiles': ["default"],
+          'profiles': ["default"], #TODO : profiles should be chosen according to a ~/.seed.cfg or sthing like this
           'ephemeral': False, #Can't be ephemeral since publishing needs to stop
           'source': {'type': 'image',
                     'mode': 'pull',
@@ -30,69 +33,54 @@ config = {'name': CONTAINER_NAME,
                     'alias': cfg['source']['alias'],
                     }
         }
-print "Creating"
+
+print ("Creating container with name " + CONTAINER_NAME)
 operation = lxd.container_init(config)
 creationResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
 #TODO exit if non 200
 
 #Start
-print "Starting"
+print ("Starting container " + CONTAINER_NAME)
 operation = lxd.container_start(CONTAINER_NAME, 60)
 startResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
 #TODO exit if non 200
 
 #Sleep some seconds to ensure container start is really done
-print "Waiting"
-time.sleep(CONTAINER_TIME_WAIT_AFTER_START)
+print ("Waiting a little for container init process")
+time.sleep(CONTAINER_TIME_WAIT_AFTER_START) #TODO : should be configurable but with a max test
 
 #Do exec
-print "Excuting"
-operation = lxd.container_run_command(CONTAINER_NAME,
-    ['/bin/sh', '-c', cfg['exec']],
-    False,    # interactive
-    True,    # wait websocket
-    {"HOME":"/root","TERM":"xterm-256color","USER":"root"}
-)
+for command in cfg['commands']:
+    print ("Command: " + command['name'])
+    operation = lxd.container_run_command(CONTAINER_NAME,
+        ['/bin/sh', '-c', command['exec']],
+        False,    # interactive
+        True,    # wait websocket
+        {"HOME":command.get("home" ,"/root"),"TERM":"xterm-256color","USER":command.get("user", "root")}
+    )
 
+    secrets = operation[1]['metadata']['metadata']['fds']
+    wsock0 = lxd.operation_stream(operation[1]['operation'], secrets['0'])
+    wsock1 = lxd.operation_stream(operation[1]['operation'], secrets['1'])
+    wsock2 = lxd.operation_stream(operation[1]['operation'], secrets['2'])
 
-print "Run Ope : "
-secrets = operation[1]['metadata']['metadata']['fds']
-print secrets
+    runResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
 
-wsock0 = lxd.operation_stream(operation[1]['operation'], secrets['0'])
-wsock1 = lxd.operation_stream(operation[1]['operation'], secrets['1'])
-wsock2 = lxd.operation_stream(operation[1]['operation'], secrets['2'])
-#result = wsock.receive()
-#wsock.close()
-#result2 = wsock2.receive()
-#for message in iter(wsock0.messages, None):
-#print wsock0.messages.get()
-#for message in iter(wsock1.messages, None):
-#while not wsock1.messages.empty():
+    stdout = wsock1.messages.get()
+    #FIXME : this is no good way to itearate over queues
+    if (isinstance(stdout, ws4py.messaging.BinaryMessage)):
+        print (stdout)
 
-#print wsock1.messages
-#print wsock2.messages
+    stderr = wsock2.messages.get()
 
-runResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
-print "Run result"
+    #FIXME : same ugly test here
+    if (isinstance(stderr, ws4py.messaging.BinaryMessage)):
+        print(stderr, file=sys.stderr)
+        print ("Exiting because of previous ERROR") #TODO MUST remember status to properly exit code and not publish
+        break
 
-#print wsock1.messages.task_done()
-stdout = wsock1.messages.get()
-#FIXME : this is no good way to itearate over queues
-if (isinstance(stdout, ws4py.messaging.BinaryMessage)):
-    print stdout
+#TODO stop & publish (only if all command success)
 
-stderr = wsock2.messages.get()
-#FIXME : same here
-if (isinstance(stderr, ws4py.messaging.BinaryMessage)):
-    print stderr
+#TODO remove in all cases
 
-#TODO exit if non 200
-
-#TODO get result through web socket
-
-#TODO publish
-
-#TODO remove
-
-print "DONE"
+print ("DONE")
