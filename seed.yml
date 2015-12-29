@@ -1,11 +1,11 @@
 #
-description: fruits are delicious
+description: test file
 source:
   remote: "https://images.linuxcontainers.org:8443"
   alias: "ubuntu/wily/amd64"
 destination:
   remote: "local"
-  alias: "ubuntu/wily/amd64"
+  alias: "test/test"
 properties:
   #micro, fat, infra, devstack or other
   type: micro
@@ -23,7 +23,7 @@ commands:
   - name: error non blocking
     exec: ls /tmp/nonexistant
     continue: true
-  - name: fail then exit
-    exec: ls /tmp/nonexistant
-  - name: should not exec cause of previous err
+#  - name: fail then exit
+#    exec: ls /tmp/nonexistant
+  - name: may not exec cause of previous err
     exec: cat /tmp/test
