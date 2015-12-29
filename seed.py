@@ -6,50 +6,15 @@ from pylxd import api
 import time
 import ws4py.messaging
 import sys
+from utils import checkConfig
 
-
-CONTAINER_NAME = "temp"
-#CONTAINER_NAME += str(uuid.uuid1())
-CONTAINER_TIME_WAIT_AFTER_START=0
+CONTAINER_NAME = "temp" + str(uuid.uuid1())
+CONTAINER_TIME_WAIT_AFTER_START=10
 
 with open("seed.yml", 'r') as ymlfile:
     cfg = yaml.load(ymlfile)
 
-#TODO: move this func to a different file
-def checkConfig():
-    print ("- Checking config file")
-
-    if (cfg.get('source', None) == None):
-        print ("-- Source is mandatory with attributes remote and alias")
-        sys.exit(1)
-    if (cfg['source'].get('remote', None) == None):
-        print ("-- Remote source lxd is mandatory")
-        sys.exit(1)
-    if (cfg['source'].get('alias', None) == None):
-        print ("-- Alias source is mandatory")
-        sys.exit(1)
-
-    if (cfg.get('destination', None) == None):
-        print ("-- Destination is mandatory with attributes remote and alias")
-        sys.exit(1)
-    if (cfg['destination'].get('alias', None) == None):
-        print ("-- Destination alias is mandatory")
-        sys.exit(1)
-
-    if (cfg.get('properties', None) == None):
-        print ("-- Properties is mandatory with at least attributes tag and type")
-        sys.exit(1)
-    if (cfg['properties'].get('tag', None) == None):
-        print ("-- Tag property is mandatory")
-        sys.exit(1)
-    #FIXME: this test is not failing if value is different from expected
-    if (cfg['properties'].get('type', None) == None):
-        print ("-- Type property is mandatory and must be one of : micro, fat, infra, devstack or other")
-        sys.exit(1)
-
-checkConfig()
-
-#print cfg
+checkConfig(cfg)
 
 lxd = api.API()
 
@@ -73,8 +38,8 @@ config = {'name': CONTAINER_NAME,
 buildStatus=0
 
 print ("- Creating container with name " + CONTAINER_NAME)
-#operation = lxd.container_init(config)
-#creationResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
+operation = lxd.container_init(config)
+creationResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
 #TODO exit if non 200
 
 #   Start
@@ -88,6 +53,7 @@ print ("- Waiting a little for container init process")
 time.sleep(CONTAINER_TIME_WAIT_AFTER_START) #TODO : should be configurable but with a max test
 
 #Do exec
+print ("- executing commands")
 for command in cfg['commands']:
     print ("-- Command: " + command['name'])
     operation = lxd.container_run_command(CONTAINER_NAME,
