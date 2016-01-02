@@ -1,5 +1,5 @@
+import sys
 
-#TODO: move this func to a different file
 def checkConfig(cfg):
     print ("- Checking config file")
 
@@ -23,10 +23,11 @@ def checkConfig(cfg):
     if (cfg.get('properties', None) == None):
         print ("-- Properties is mandatory with at least attributes tag and type")
         sys.exit(1)
-    if (cfg['properties'].get('tag', None) == None):
-        print ("-- Tag property is mandatory")
+    if (cfg['properties'].get('tags', None) == None):
+        print ("-- Tags property is mandatory")
         sys.exit(1)
     #FIXME: this test is not failing if value is different from expected
     if (cfg['properties'].get('type', None) == None):
         print ("-- Type property is mandatory and must be one of : micro, fat, infra, devstack or other")
         sys.exit(1)
+    #FIXME: ref, gitsrc and other properties needs to be tested

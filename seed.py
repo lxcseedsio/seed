@@ -19,6 +19,7 @@ checkConfig(cfg)
 
 lxd = api.API()
 
+#FIXME: file transfer is needed feature
 #FIXME using uuid container test should not be necessary
 try:
     lxd.container_defined(CONTAINER_NAME)
@@ -97,11 +98,16 @@ try:
 
     #Publish (only if build successfull)
     if (buildStatus == 0):
-        print("- Publishing")
-        #FIXME : change to pylxd when container_publish work
-        #FIXME : use tags instead of tags, add git src, ref version and keywords and disrcete fields
-        call(["lxc", "publish", CONTAINER_NAME, "--public", "--alias="+cfg["destination"]["alias"]])
+        #FIXME : need contrib on pylxc
         #publish=lxd.container_publish(CONTAINER_NAME)
+        CALLPARAMS=["/home/osboxes/go/bin/lxc", "publish", CONTAINER_NAME, "--public", "--alias="+cfg["destination"]["alias"]]
+        #FIXME: need contib on lxc command line, and maybe lxd cause [--otherProperty=] does not seem to be allowed yet
+        #:'( for key, val  in cfg["properties"].items():
+            #:'(  CALLPARAMS.append("--"+key+"="+val)
+
+        print ("- Publishing with params :", CALLPARAMS)
+        call(CALLPARAMS)
+        #FIXME: publish status needs to be tested
 except Exception:
     traceback.print_exc()
 

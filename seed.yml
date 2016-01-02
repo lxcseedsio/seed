@@ -9,7 +9,10 @@ destination:
 properties:
   #micro, fat, infra, devstack or other
   type: micro
-  tag: tag
+  tags: tag1,tag2
+  ref: v0.1
+  source: github.com/lxcseeds
+  otherProperty: tell anything
 #list of named commands with exec, user, home and continue attributes
 commands:
   - name: exec rm
