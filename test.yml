@@ -1,0 +1,32 @@
+#
+description: test file
+source:
+  remote: "https://images.linuxcontainers.org:8443"
+  alias: "ubuntu/wily/amd64"
+destination:
+  remote: "local"
+  alias: "test/test"
+properties:
+  #micro, fat, infra, devstack or other
+  type: micro
+  tags: tag1,tag2
+  ref: v0.1
+  source: github.com/lxcseeds
+  otherProperty: tell anything
+#list of named commands with exec, user, home and continue attributes
+commands:
+  - name: exec rm
+    exec: rm -f /tmp/test
+    user: root
+    home: /root
+  - name: exec echo
+    exec: echo test > /tmp/test
+  - name: cat test
+    exec: cat /tmp/test
+  - name: error non blocking
+    exec: ls /tmp/nonexistant
+    continue: true
+#  - name: fail then exit
+#    exec: ls /tmp/nonexistant
+  - name: may not exec cause of previous err
+    exec: cat /tmp/test

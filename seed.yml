@@ -1,32 +1,27 @@
 #
-description: test file
+description: "a camp: Container Apache (2) Mysql (ver) Php (ver)"
 source:
   remote: "https://images.linuxcontainers.org:8443"
   alias: "ubuntu/wily/amd64"
 destination:
   remote: "local"
-  alias: "test/test"
+  alias: "wily/camp/amd64"
 properties:
   #micro, fat, infra, devstack or other
-  type: micro
-  tags: tag1,tag2
+  type: fat
+  tags: apache, mysql, php
   ref: v0.1
   source: github.com/lxcseeds
-  otherProperty: tell anything
+  otherProperty: need contrib lxc/lxd to add more properties
 #list of named commands with exec, user, home and continue attributes
 commands:
-  - name: exec rm
-    exec: rm -f /tmp/test
-    user: root
-    home: /root
-  - name: exec echo
-    exec: echo test > /tmp/test
-  - name: cat test
-    exec: cat /tmp/test
-  - name: error non blocking
-    exec: ls /tmp/nonexistant
-    continue: true
-#  - name: fail then exit
-#    exec: ls /tmp/nonexistant
-  - name: may not exec cause of previous err
-    exec: cat /tmp/test
+  - name: exec install apache2
+    exec: apt-get -y install apache2
+  - name: set defaults to avoid password promprint
+    exec: echo mysql-server mysql-server/root_password password camp|debconf-set-selections
+  - name: password again
+    exec: echo mysql-server mysql-server/root_password_again password camp | debconf-set-selections
+  - name: install mysql
+    exec: apt-get -y install mysql-server-5.6
+  - name: install php5
+    exec: apt-get -y install php5
