@@ -8,6 +8,7 @@ import ws4py.messaging
 import sys, traceback
 from subprocess import call
 from utils import checkConfig
+import Queue
 
 CONTAINER_NAME = "temp" + str(uuid.uuid1())
 CONTAINER_TIME_WAIT_AFTER_START=10
@@ -53,39 +54,33 @@ try:
 
     #Sleep some seconds to ensure container start is really done
     print ("- Waiting a little for container init process")
-    time.sleep(CONTAINER_TIME_WAIT_AFTER_START) #TODO : should be configurable but with a max test
+    #time.sleep(CONTAINER_TIME_WAIT_AFTER_START) #TODO : should be configurable but with a max test
 
     #Do exec
     print ("- executing commands")
     for command in cfg['commands']:
-        print ("-- Command: " + command['name'])
+        print ("\n-- Command: " + command['name'])
         operation = lxd.container_run_command(CONTAINER_NAME,
-            ['/bin/sh', '-c', command['exec']],
+            ['/bin/sh', '-c', '2>&1 ' + command['exec']],  #Redirects stderr to stdout cause can't find a way to merge websockets queues
             False,    #no interactive
-            True,    # wait websocket
+            True,    # wait websocket (Needed to get metadata and sockets)
             {"HOME":command.get("home" ,"/root"),"TERM":"xterm-256color","USER":command.get("user", "root")}
         )
-
+        operationInfo = lxd.operation_info(operation[1]['operation'])
         secrets = operation[1]['metadata']['metadata']['fds']
         wsock0 = lxd.operation_stream(operation[1]['operation'], secrets['0'])
         wsock1 = lxd.operation_stream(operation[1]['operation'], secrets['1'])
         wsock2 = lxd.operation_stream(operation[1]['operation'], secrets['2'])
 
-        runResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
-        operationResult = lxd.operation_info(operation[1]['operation'])
+        while operationInfo[1]['metadata']['status'] == "Running":
+            while True:
+                try:
+                    print(wsock1.messages.get(True, 0.5),end="")
+                except Queue.Empty:
+                    break
+            operationInfo = lxd.operation_info(operation[1]['operation'])
 
-        stdout = wsock1.messages.get()
-        #FIXME : this is no good way to itearate over queues
-        if (isinstance(stdout, ws4py.messaging.BinaryMessage)):
-            print (stdout)
-
-        stderr = wsock2.messages.get()
-
-        #FIXME : same ugly test here
-        if (isinstance(stderr, ws4py.messaging.BinaryMessage)):
-            print(stderr, file=sys.stderr)
-
-        if ((operationResult[1]['metadata']['metadata']['return'] != 0) and (command.get("continue" ,False) != True)):
+        if ((operationInfo[1]['metadata']['metadata']['return'] != 0) and (command.get("continue" ,False) != True)):
             buildStatus=-1
             print ("- Exiting because of previous ERROR")
             break
@@ -112,6 +107,11 @@ except Exception:
     traceback.print_exc()
 
 finally:
+    #Stop in al cases
+    operation = lxd.container_stop(CONTAINER_NAME, 60)
+    #TODO: test if publish possible with suspend instead of stopping
+    stopResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
+
     #Delete in all cases
     print ("- Delete container " + CONTAINER_NAME)
     operation = lxd.container_destroy(CONTAINER_NAME)
