@@ -8,7 +8,7 @@ Neeeds pylxd python package installed via pip
 
 ## Usage
 
-python seed.py file.yml
+python seed.py -f file.yml
 
 ## Config structure
 

@@ -15,6 +15,10 @@ properties:
   otherProperty: tell anything
 #list of named commands with exec, user, home and continue attributes
 commands:
+  - name: put file
+    put: ./testput.file
+    todest: /tmp/putted.file
+    continue: true
   - name: exec rm
     exec: rm -f /tmp/test
     user: root
@@ -23,7 +27,7 @@ commands:
     exec: echo test > /tmp/test
   - name: cat test
     exec: cat /tmp/test
-  - name: error non blocking
+  - name: error non blocking (using continue property)
     exec: ls /tmp/nonexistant
     continue: true
 #  - name: fail then exit
