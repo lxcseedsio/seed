@@ -4,7 +4,9 @@ Tool for creating lxc images on using lxd servers
 
 ## Installation
 
-Neeeds pylxd python package installed via pip
+pip install -r requirements.txt
+
+NOTE : since pylxd need contrib on publish rest, you currently need to install lxc command
 
 ## Usage
 
@@ -23,7 +25,8 @@ See test.yml for more details
 5. Submit a pull request
 
 ## History
-
+added config options when creating container
+added operation to put file
 really beta: can build, can publish
 
 ## Credits
