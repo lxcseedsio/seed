@@ -1,5 +1,7 @@
 #
 description: test file
+config:
+  security.nesting: "true"
 source:
   remote: "https://images.linuxcontainers.org:8443"
   alias: "ubuntu/wily/amd64"
