@@ -18,9 +18,18 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-q", "--quicktest", help="do not create nor delete container (use 'quicktest' container)",
                     action="store_true")
 parser.add_argument("-f", "--file", help="seed yaml file to use")
+parser.add_argument("-t", "--timeout-on-start", help="timeout while waiting container to start in seconds (default 10)")
 args = parser.parse_args()
+print(args)
+
+if not args.timeout_on_start :
+    CONTAINER_TIME_WAIT_AFTER_START = 10
+else :
+    CONTAINER_TIME_WAIT_AFTER_START = float(args.timeout_on_start)
+
 if args.quicktest:
     QUICKTEST=True
+
 if not args.file :
     print("-f file.yml is mandatory")
     sys.exit(1)
@@ -33,8 +42,6 @@ else :
     CONTAINER_NAME = "quicktest"
     print ("/!\ doing operations in quicktest mode : please ensure a container named 'quicktest' already exists")
 
-CONTAINER_TIME_WAIT_AFTER_START=10
-
 with open(SEEDFILE, 'r') as ymlfile:
     cfg = yaml.load(ymlfile)
 
@@ -45,7 +52,6 @@ lxd = api.API()
 
 try:
     configOptions = cfg.get('config', {})
-    print(configOptions)
     config = {'name': CONTAINER_NAME,
               'profiles': ["default"], #TODO : profiles should be chosen according to a ~/.seed.cfg or sthing like this
               'ephemeral': False, #Can't be ephemeral since publishing needs to stop
@@ -73,8 +79,8 @@ try:
     #TODO exit if non 200
 
     #Sleep some seconds to ensure container start is really done
-    print ("- Waiting a little for container init process")
-    time.sleep(CONTAINER_TIME_WAIT_AFTER_START) #TODO : should be configurable but with a max test
+    print ("- Waiting " + str(CONTAINER_TIME_WAIT_AFTER_START) + "s for container init process")
+    time.sleep(CONTAINER_TIME_WAIT_AFTER_START) #FIXME : should test (with timeout) if container and at least one eth is UP
 
     #Do exec
     print ("- executing commands")
@@ -124,25 +130,58 @@ try:
 
     #Publish (only if build successfull)
     if (buildStatus == 0):
-        #FIXME : need contrib on pylxc
-        #publish=lxd.container_publish(CONTAINER_NAME)
-        CALLPARAMS=["lxc", "publish", CONTAINER_NAME, "--alias="+cfg["destination"]["alias"]]
-        if (cfg['destination'].get('public', True) is True) :
-            CALLPARAMS.append("--public")
-        CALLPARAMS.append("description="+cfg['description'])
-        for key, val  in cfg["properties"].items():
-            CALLPARAMS.append(key+"="+val)
+        publishDict= {
+            "public": cfg['destination'].get('public', True),         # true or false
+            "filename": "/tmp/" + CONTAINER_NAME,     # Used for export
+            "source": {
+                "type": "container",  # One of "container" or "snapshot"
+                "name": CONTAINER_NAME
+            },
+            "properties": {           # Image properties
+            },
+        }
 
-        print ("- Publishing with params :", CALLPARAMS)
-        call(CALLPARAMS)
-        #FIXME: publish status needs to be tested
+        for key, val  in cfg["properties"].items():
+            publishDict["properties"][key]=val
+        publishDict["properties"]["description"]=cfg['description']
+
+        print ("- Publishing with params : ", publishDict)
+
+        operation=lxd.container_publish(publishDict)
+        publishResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
+
+        fingerprint = lxd.operation_info(operation[1]['operation'])[1]['metadata']['metadata']['fingerprint']
+        aliasDict = {
+            'description': cfg['description'],
+            'target': fingerprint,
+            'name': cfg['destination']['alias']
+        }
+
+        #If alias is  defined, an exception will be raised, for unknonw reason
+        oldImage = None
+        try:
+            oldImage = lxd.alias_show(cfg["destination"]["alias"])
+            aliasList = lxd.alias_list()
+            print("- Alias was defined with image : ", oldImage)
+        except:
+            print("- Alias was never defined")
+        if oldImage is not None :
+            print("- Deleting old alias")
+            lxd.alias_delete(cfg["destination"]["alias"])
+            print ("- Creating new alias ", cfg["destination"]["alias"])
+            lxd.alias_create(aliasDict)
+            print("- Deleting old image associated with alias")
+            lxd.image_delete(oldImage[1]['metadata']['target'])
+        else :
+            print ("- Creating alias : ", cfg["destination"]["alias"])
+            lxd.alias_create(aliasDict)
+
 except Exception:
     traceback.print_exc()
 
 finally:
     #Stop in al cases
     operation = lxd.container_stop(CONTAINER_NAME, 60)
-    #TODO: test if publish possible with suspend instead of stopping
     stopResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
 
     #Delete in all cases
