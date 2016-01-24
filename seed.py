@@ -112,7 +112,6 @@ try:
                 print ("- Exiting because of previous ERROR")
                 break
         elif command.get('put', None) is not None :
-            #TODO: put operation implement
             print ("-- uploading file : ", command['put'] , " to ", command['todest'])
             try:
                 operation = lxd.put_container_file(CONTAINER_NAME, command['put'], command['todest'])
@@ -125,7 +124,6 @@ try:
     #Stop in any case
     print ("- Stopping container " + CONTAINER_NAME)
     operation = lxd.container_stop(CONTAINER_NAME, 60)
-    #TODO: test if publish possible with suspend instead of stopping
     stopResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
 
     #Publish (only if build successfull)
@@ -141,8 +139,10 @@ try:
             },
         }
 
-        for key, val  in cfg["properties"].items():
-            publishDict["properties"][key]=val
+        if cfg.get("properties", None) != None :
+            for key, val  in cfg["properties"].items():
+                publishDict["properties"][key]=val
+
         publishDict["properties"]["description"]=cfg['description']
 
         print ("- Publishing with params : ", publishDict)

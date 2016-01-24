@@ -19,15 +19,5 @@ def checkConfig(cfg):
     if (cfg['destination'].get('alias', None) == None):
         print ("-- Destination alias is mandatory")
         sys.exit(1)
-
-    if (cfg.get('properties', None) == None):
-        print ("-- Properties is mandatory with at least attributes tag and type")
-        sys.exit(1)
-    if (cfg['properties'].get('tags', None) == None):
-        print ("-- Tags property is mandatory")
-        sys.exit(1)
-    #FIXME: this test is not failing if value is different from expected
-    if (cfg['properties'].get('type', None) == None):
-        print ("-- Type property is mandatory and must be one of : micro, fat, infra, devstack or other")
-        sys.exit(1)
-    #FIXME: ref, gitsrc and other properties needs to be tested
+    if (cfg['destination'].get('remote', None) != "local"):
+        print ("-- Please note : remote is not supported")
