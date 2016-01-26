@@ -4,7 +4,6 @@ import yaml
 import uuid
 from pylxd import api
 import time
-import ws4py.messaging
 import sys, traceback
 from subprocess import call
 import Queue
@@ -12,23 +11,19 @@ import argparse
 
 from utils import checkConfig
 
-QUICKTEST=False
 SEEDFILE=""
 parser = argparse.ArgumentParser()
-parser.add_argument("-q", "--quicktest", help="do not create nor delete container (use 'quicktest' container)",
-                    action="store_true")
 parser.add_argument("-f", "--file", help="seed yaml file to use")
 parser.add_argument("-t", "--timeout-on-start", help="timeout while waiting container to start in seconds (default 10)")
+parser.add_argument("-n", "--name", help="name of the container to be used")
+parser.add_argument("--no-delete", help="do not delete at the end of process", action="store_true")
 args = parser.parse_args()
-print(args)
 
+print(args)
 if not args.timeout_on_start :
     CONTAINER_TIME_WAIT_AFTER_START = 10
 else :
     CONTAINER_TIME_WAIT_AFTER_START = float(args.timeout_on_start)
-
-if args.quicktest:
-    QUICKTEST=True
 
 if not args.file :
     print("-f file.yml is mandatory")
@@ -36,11 +31,10 @@ if not args.file :
 else :
     SEEDFILE=args.file
 
-if QUICKTEST is not True :
-    CONTAINER_NAME = "temp" + str(uuid.uuid1())
+if args.name is not None :
+    CONTAINER_NAME = args.name
 else :
-    CONTAINER_NAME = "quicktest"
-    print ("/!\ doing operations in quicktest mode : please ensure a container named 'quicktest' already exists")
+    CONTAINER_NAME = "temp" + str(uuid.uuid1())
 
 with open(SEEDFILE, 'r') as ymlfile:
     cfg = yaml.load(ymlfile)
@@ -62,15 +56,14 @@ try:
                         },
                 'config': configOptions
             }
-    print(config)
+
     #Default build status is OK
     buildStatus=0
 
-    if QUICKTEST is not True :
-        print ("- Creating container with name " + CONTAINER_NAME)
-        operation = lxd.container_init(config)
-        creationResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
-        #TODO exit if non 200
+    print ("- Creating container with name " + CONTAINER_NAME)
+    operation = lxd.container_init(config)
+    creationResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
+    #TODO exit if non 200
 
     #   Start
     print ("- Starting container " + CONTAINER_NAME)
@@ -157,7 +150,7 @@ try:
             'name': cfg['destination']['alias']
         }
 
-        #If alias is  defined, an exception will be raised, for unknonw reason
+        #Check if alias exists
         oldImage = None
         try:
             oldImage = lxd.alias_show(cfg["destination"]["alias"])
@@ -180,12 +173,12 @@ except Exception:
     traceback.print_exc()
 
 finally:
-    #Stop in al cases
+    #Stop in all cases
     operation = lxd.container_stop(CONTAINER_NAME, 60)
     stopResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
 
     #Delete in all cases
-    if QUICKTEST is not True :
+    if args.no_delete is not True :
         print ("- Delete container " + CONTAINER_NAME)
         operation = lxd.container_destroy(CONTAINER_NAME)
         destroyResult = lxd.wait_container_operation(operation[1]['operation'],200, 60)
