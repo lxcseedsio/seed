@@ -134,7 +134,7 @@ try:
 
         if cfg.get("properties", None) != None :
             for key, val  in cfg["properties"].items():
-                publishDict["properties"][key]=val
+                publishDict["properties"][key]=str(val) #ensure any prop is a string
 
         publishDict["properties"]["description"]=cfg['description']
 
